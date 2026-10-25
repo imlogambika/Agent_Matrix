@@ -134,6 +134,12 @@ then re-run it with `enforce`.
 * **Deploy 2:** the three policies were moved to v2. `fp guardrails summary` then showed all six firing exactly
   once on their probes (5 would block, 1 would instruct). None fired on any of the other 250+ tool calls of
   normal development in that hour.
+* **Deploy 3: `enforce`.** The coding agent then tried to copy onto `output.csv` and to stage `dataset/`.
+  Failproof blocked both before they ran, with the policies' instructions ("Writing audit verdicts by hand
+  bypasses the completion guard. Re-run python3 code/main.py instead."). `fp guardrails summary` records
+  them as `blocked` by `cloud/agent-matrix-block-verdict-tampering@2` and
+  `cloud/agent-matrix-block-private-data-commit@1` on 1 enforcing machine. The audit pipeline, the tests and
+  normal edits kept running unblocked. Roll back with `fp fleet rollback <machine> 2`.
 
 The application also enforces its own safety controls (the guard, input validation, bounded model retries,
 identity-conflict handling). Those are Agent Matrix code, not Failproof features.
