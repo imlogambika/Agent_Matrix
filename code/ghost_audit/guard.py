@@ -16,6 +16,10 @@ decision was reached (rules, a model, or a tampered result):
 
 ``check`` returns the violated invariants (empty = the case may be published).
 ``main.py`` refuses to write ``output.csv`` if any case violates one.
+
+Because this file decides what may be reported COMPLETE, the Failproof policy
+``agent-matrix-warn-decision-logic-change`` makes any coding agent stop and confirm
+with the user before editing it, then run the safety scenarios and tests.
 """
 from __future__ import annotations
 

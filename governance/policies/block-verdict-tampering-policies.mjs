@@ -9,7 +9,7 @@ const WRITES = [
   new RegExp(`>>?\\s*\\S*${TARGET}`),                            // redirect onto a verdict file
   new RegExp(`\\b(sed|perl)\\b[^|;&]*\\s-[a-z]*i[^|;&]*${TARGET}`),     // in-place edit
   new RegExp(`\\btee\\b[^|;&]*${TARGET}`),
-  new RegExp(`\\b(cp|install)\\b[^|;&]*\\s\\S*${TARGET}\\s*$`),       // copy over it
+  new RegExp(`\\b(cp|install)\\b[^|;&]*\\s\\S*${TARGET}\\s*($|[;&|)])`),  // copy over it (end of that command)
   new RegExp(`\\b(mv|rm|truncate)\\b[^|;&]*${TARGET}`),             // replace or delete it
 ];
 

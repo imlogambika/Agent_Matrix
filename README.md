@@ -111,12 +111,29 @@ a specific way an agent could corrupt *this* system:
 Each policy was tested two ways:
 
 * `bash governance/test_policies.sh` runs every policy through Failproof's own hook runner in an isolated
-  sandbox: **47 / 47 cases pass**. These include must-allow look-alikes, so `cp output.csv /tmp/backup` and
+  sandbox: **54 / 54 cases pass**. These include must-allow look-alikes, so `cp output.csv /tmp/backup` and
   reading evidence stay allowed.
 * `fp policies test` independently checks each one: **6 / 6**.
 
 `bash governance/publish_and_deploy.sh <machine-id>` publishes them to the org and deploys them in `observe`,
 then re-run it with `enforce`.
+
+**Verified in the Failproof org `matrix` with `fp`, 2026-10-25:**
+
+* **Sessions:** 519 `audit-orchestrator` sessions from the full audit run arrived. All five agent roles appear
+  as agents (`intent-classifier`, `identity-resolver`, `evidence-investigator`, `historical-auditor`,
+  `decision-verifier`), next to the Claude Code sessions that built the project.
+* **Policies:** the six policies above are published as `agent-matrix-*`.
+* **Deploy 1:** all six went to the development machine in `observe`. Harmless probes (a no-op `chmod`, a
+  dry-run `git add`, an upload to a closed local port, same-file copies, a guard docstring edit) showed 4 of 6
+  firing correctly.
+* **A bypass found by observe mode:** `block-verdict-tampering` and `block-fabricated-model-replies` missed
+  `cp X output.csv; …`, because the rule expected the target at the very end of the command. The sandbox tests
+  had not caught it, since every test command ended with the target. The fix ships as version 2 (also applied
+  to `protect-audit-evidence`), with chained-command regression cases (54 / 54).
+* **Deploy 2:** the three policies were moved to v2. `fp guardrails summary` then showed all six firing exactly
+  once on their probes (5 would block, 1 would instruct). None fired on any of the other 250+ tool calls of
+  normal development in that hour.
 
 The application also enforces its own safety controls (the guard, input validation, bounded model retries,
 identity-conflict handling). Those are Agent Matrix code, not Failproof features.

@@ -7,7 +7,7 @@ const MUTATING = [
   /\bsed\b[^|;&]*\s-i/,
   />>?\s*\S*dataset\//,
   /\btee\b[^|;&]*dataset\//,
-  /\b(cp|install|rsync)\b[^|;&]*\sdataset\/\S*\s*$/,
+  /\b(cp|install|rsync)\b[^|;&]*\sdataset\/\S*\s*($|[;&|)])/,   // copy over evidence (end of that command)
   /\bgit\s+(checkout|restore|clean|rm|reset|mv)\b[^|;&]*dataset/,
 ];
 

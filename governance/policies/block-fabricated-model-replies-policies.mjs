@@ -20,7 +20,7 @@ customPolicies.add({
     if (tool !== "Bash") return allow();
     const command = String(ctx.toolInput?.command ?? "");
     const writes = [/>>?\s*\S*llm_cache\.json/, /\b(sed|perl)\b[^|;&]*\s-[a-z]*i[^|;&]*llm_cache/,
-                    /\btee\b[^|;&]*llm_cache/, /\b(cp|install)\b[^|;&]*\s\S*llm_cache\.json\s*$/,
+                    /\btee\b[^|;&]*llm_cache/, /\b(cp|install)\b[^|;&]*\s\S*llm_cache\.json\s*($|[;&|)])/,
                     /\b(mv|rm|truncate)\b[^|;&]*llm_cache/];
     if (CACHE.test(command) && writes.some((re) => re.test(command))) {
       return deny("llm_cache.json records real model answers and is written only by the model client. " +
