@@ -1,0 +1,235 @@
+<title>Ghost Data Audit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a case ledger on the left, the open case file on the right; one column on phones */
+:root {
+  --paper: #f3f5f2;
+  --panel: #ffffff;
+  --ink: #1b2422;
+  --muted: #5b6662;
+  --rule: #d9dfda;
+  --accent: #1d5d8a;
+  --accent-soft: #e3edf5;
+  --ok: #2d7a4d;
+  --ok-soft: #e2f1e7;
+  --warn: #9a5b00;
+  --warn-soft: #f7ecd9;
+  --bad: #b0281f;
+  --bad-soft: #f8e4e1;
+  --na: #66706c;
+  --na-soft: #e8ebe9;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111614; --panel: #19201e; --ink: #e4eae7; --muted: #9ba7a2; --rule: #2a3330;
+    --accent: #79b4df; --accent-soft: #1b2b38; --ok: #63c58c; --ok-soft: #173024; --warn: #e3a64c;
+    --warn-soft: #33270f; --bad: #f1857b; --bad-soft: #3a1c19; --na: #a2aaa6; --na-soft: #242b29;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111614; --panel: #19201e; --ink: #e4eae7; --muted: #9ba7a2; --rule: #2a3330;
+  --accent: #79b4df; --accent-soft: #1b2b38; --ok: #63c58c; --ok-soft: #173024; --warn: #e3a64c;
+  --warn-soft: #33270f; --bad: #f1857b; --bad-soft: #3a1c19; --na: #a2aaa6; --na-soft: #242b29;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 14px/1.5 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h1 { font-size: 1.9rem; line-height: 1.1; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.mono { font-family: var(--mono); font-size: .92em; }
+.lede { color: var(--muted); max-width: 70ch; margin: 6px 0 0; }
+header { display: grid; gap: 14px; margin-bottom: 18px; }
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.tile { all: unset; cursor: pointer; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  padding: 10px 12px; display: grid; gap: 2px; }
+.tile:focus-visible, button:focus-visible, input:focus-visible, .row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tile b { font: 600 1.55rem/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.tile span { color: var(--muted); font-size: .8rem; }
+.grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ledger { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; display: grid;
+  grid-template-rows: auto 1fr; max-height: calc(100vh - 220px); min-height: 420px; }
+.search { padding: 10px; border-bottom: 1px solid var(--rule); display: grid; gap: 6px; }
+.search input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 4px;
+  background: var(--paper); color: var(--ink); }
+.search small { color: var(--muted); }
+.list { overflow-y: auto; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 9px 12px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+.row:hover { background: var(--accent-soft); }
+.row[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.row .sub { grid-column: 1 / -1; color: var(--muted); font-size: .8rem; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px;
+  font: 500 .72rem/1.6 var(--body); letter-spacing: .03em; white-space: nowrap; }
+.s-INCOMPLETE { background: var(--bad-soft); color: var(--bad); }
+.s-COMPLETE { background: var(--ok-soft); color: var(--ok); }
+.s-NOT_APPLICABLE { background: var(--na-soft); color: var(--na); }
+.s-review { background: var(--warn-soft); color: var(--warn); }
+.s-auto, .s-info { background: var(--na-soft); color: var(--na); }
+.file { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: grid; gap: 18px; min-width: 0; }
+.file-head { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: baseline; }
+.claim { color: var(--muted); }
+.claim s { color: var(--bad); }
+.meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.meta div { display: grid; gap: 2px; }
+.meta dt { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+.meta dd { margin: 0; font-family: var(--mono); font-size: .85rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+blockquote { margin: 0; padding: 10px 14px; background: var(--paper); border-radius: 4px; max-width: 75ch; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.num { font-variant-numeric: tabular-nums; color: var(--muted); width: 2.5em; }
+.phase td { padding-top: 12px; font: 600 .72rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border-bottom: 0; }
+.ev { font-family: var(--mono); font-size: .8rem; color: var(--accent); }
+.ev small { display: block; color: var(--muted); font-family: var(--body); }
+.empty { color: var(--muted); padding: 24px 0; }
+.flags { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flags li { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 4px; }
+.flags p { margin: 0; color: var(--muted); font-size: .82rem; }
+footer { color: var(--muted); font-size: .8rem; margin-top: 18px; max-width: 80ch; }
+@media (max-width: 880px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .ledger { max-height: 360px; }
+  .meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: no-preference) { .row { transition: background .12s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Ghost Data Audit</h1>
+      <p class="lede">Every deletion request, re-audited from the evidence as it stood at its audit cutoff. Workflow
+        statuses are treated as claims; each step cites the file, activity or audit record that proves it.</p>
+    </div>
+    <div class="tiles" id="tiles"></div>
+  </header>
+  <div class="grid">
+    <section class="ledger" aria-label="Cases">
+      <div class="search">
+        <input id="q" type="search" placeholder="Search case, user or resource id" aria-label="Search cases">
+        <small id="count"></small>
+      </div>
+      <div class="list" id="list" role="listbox" aria-label="Case list"></div>
+    </section>
+    <section class="file" id="file" aria-live="polite"></section>
+  </div>
+  <footer>Built by the agent's own run over the evaluation requests (deterministic core with cached open-source model
+    replies). Emails are masked; ids are as they appear in the dataset.</footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const OPS = {
+  REPORT_REMAINING_RECORD: "Record still exists", REPORT_EXPOSED_PII: "Personal data still exposed",
+  REPORT_ACTIVE_DATA_FLOW: "Sync can recreate data", REPORT_RESTORE_RISK: "Backup can restore data",
+  DISABLE_DATA_FLOW: "Disable the data flow", BLOCK_RESTORE: "Block restore", DELETE_RECORD: "Delete the record",
+  REDACT_RECORD: "Redact identifiers", ANONYMIZE_RECORD: "Anonymize the record",
+  VERIFY_RECORD_ABSENT: "Verify absent", VERIFY_RECORD_PRESENT: "Verify retained", VERIFY_RECORD_REDACTED: "Verify redacted",
+  VERIFY_RECORD_ANONYMIZED: "Verify anonymized", VERIFY_DATA_FLOW_DISABLED: "Verify flow disabled",
+  VERIFY_RESTORE_BLOCKED: "Verify restore blocked"
+};
+const LABEL = { INCOMPLETE: "Incomplete", COMPLETE: "Complete", NOT_APPLICABLE: "Not applicable" };
+const CLAIM = { COMPLETE: "Complete", PARTIALLY_COMPLETE: "Partially complete", NOT_STARTED: "Not started" };
+const cases = DATA.cases;
+const byId = Object.fromEntries(cases.map(c => [c.id, c]));
+const claimWrong = c => c.claim === "COMPLETE" && c.status === "INCOMPLETE";
+const needsReview = c => c.review.some(f => f.severity === "review");
+const FILTERS = [
+  ["all", "All cases", () => true],
+  ["INCOMPLETE", "Incomplete", c => c.status === "INCOMPLETE"],
+  ["COMPLETE", "Complete", c => c.status === "COMPLETE"],
+  ["claim", "“Complete” claims disproved", claimWrong],
+  ["review", "Need a reviewer", needsReview],
+];
+let filter = "all", selected = null;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const pill = s => `<span class="pill s-${s}">${LABEL[s] || s}</span>`;
+const day = t => t ? t.replace("T", " ").replace(":00Z", "Z") : "";
+
+function tiles() {
+  document.getElementById("tiles").innerHTML = FILTERS.map(([k, label, fn]) =>
+    `<button class="tile" data-k="${k}" aria-pressed="${k === filter}"><b>${cases.filter(fn).length}</b><span>${label}</span></button>`).join("");
+  document.querySelectorAll(".tile").forEach(b => b.onclick = () => { filter = b.dataset.k; tiles(); list(); });
+}
+
+function list() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const fn = FILTERS.find(f => f[0] === filter)[2];
+  const rows = cases.filter(c => fn(c) && (!q || c.id.includes(q) || c.user.includes(q) ||
+    Object.keys(c.resources).some(r => r.includes(q)) || c.email.toLowerCase().includes(q)));
+  document.getElementById("count").textContent = `${rows.length} of ${cases.length} cases`;
+  document.getElementById("list").innerHTML = rows.map(c => `
+    <div class="row" role="option" tabindex="0" data-id="${c.id}" aria-selected="${c.id === selected}">
+      <span class="mono">${c.id}</span>${pill(c.status)}
+      <span class="sub">${esc(c.user)} · claimed ${esc((CLAIM[c.claim] || c.claim).toLowerCase())}${needsReview(c) ? " · review" : ""}</span>
+    </div>`).join("") || `<p class="empty" style="padding:12px">No case matches.</p>`;
+  document.querySelectorAll(".row").forEach(r => {
+    r.onclick = () => openCase(r.dataset.id);
+    r.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCase(r.dataset.id); } };
+  });
+}
+
+function evidence(id) {
+  if (!id) return `<span class="ev" style="color:var(--muted)">after remediation</span>`;
+  const e = DATA.evidence[id];
+  return `<span class="ev">${esc(id)}${e ? `<small>${esc(e.name)} · ${day(e.captured)}</small>` : ""}</span>`;
+}
+
+function openCase(id) {
+  const c = byId[id];
+  if (!c) return;
+  selected = id;
+  try { history.replaceState(null, "", "#" + id); } catch (e) { /* hash routing is optional */ }
+  document.querySelectorAll(".row").forEach(r => r.setAttribute("aria-selected", r.dataset.id === id));
+  const wrong = c.claim !== c.status && c.status !== "NOT_APPLICABLE";
+  let phase = "", steps = "";
+  for (const s of c.steps) {
+    if (s.phase !== phase) { phase = s.phase; steps += `<tr class="phase"><td colspan="4">${phase.toLowerCase()}</td></tr>`; }
+    steps += `<tr><td class="num">${s.step_no}</td><td>${esc(OPS[s.operation] || s.operation)}<br><span class="mono" style="color:var(--muted)">${esc(s.system_id)} · ${esc(s.resource_id)}</span></td>
+      <td><span class="pill s-${s.phase === "FINDING" ? "INCOMPLETE" : "COMPLETE"}">${esc(s.state.toLowerCase())}</span></td><td>${evidence(s.evidence_id)}</td></tr>`;
+  }
+  const res = Object.entries(c.resources).map(([rid, r]) => {
+    const state = r.present === false ? "absent" : r.present === null ? "no admissible evidence" :
+      [r.present ? "present" : "", r.pii ? "identifiers exposed" : "", r.enabled === true ? "flow enabled" : r.enabled === false ? "flow disabled" : "",
+       r.restore === true ? "restore allowed" : r.restore === false ? "restore blocked" : ""].filter(Boolean).join(", ");
+    return `<tr><td class="mono">${esc(rid)}</td><td>${esc((r.category || "").toLowerCase().replaceAll("_", " "))}</td><td>${esc(state)}</td>
+      <td>${r.explicit ? "identifier link" : "deletion batch"}</td><td>${r.evidence ? evidence(r.evidence) : ""}</td></tr>`;
+  }).join("");
+  const flags = c.review.map(f => `<li><div>${`<span class="pill s-${f.severity}">${esc(f.severity)}</span>`} <span class="mono">${esc(f.signal)}</span>
+      ${f.resource ? `· <span class="mono">${esc(f.resource)}</span>` : ""} ${f.detail ? `· ${esc(f.detail)}` : ""}</div><p>${esc(f.resolution)}</p></li>`).join("");
+  document.getElementById("file").innerHTML = `
+    <div class="file-head"><h2 class="mono">${c.id}</h2>${pill(c.status)}
+      <span class="claim">Workflow claimed ${wrong ? `<s>${esc(CLAIM[c.claim] || c.claim)}</s>` : esc(CLAIM[c.claim] || c.claim)}</span></div>
+    <dl class="meta">
+      <div><dt>Subject</dt><dd>${esc(c.user || "unresolved")} · ${esc(c.email)}</dd></div>
+      <div><dt>Requested</dt><dd>${day(c.requested)}</dd></div>
+      <div><dt>Reported</dt><dd>${day(c.reported)}</dd></div>
+      <div><dt>Audit cutoff</dt><dd>${day(c.audit)}</dd></div>
+    </dl>
+    <blockquote>${esc(c.text)}</blockquote>
+    <div><h3>Steps</h3>${c.steps.length ? `<div class="scroll"><table><tbody>${steps}</tbody></table></div>` :
+      `<p class="empty">The request does not authorise deletion, so nothing is deleted or verified.</p>`}</div>
+    ${res ? `<div><h3>Resources and their state at the cutoff</h3><div class="scroll"><table>
+      <thead><tr><th>Resource</th><th>Category</th><th>State</th><th>Tied to the case by</th><th>Proof</th></tr></thead><tbody>${res}</tbody></table></div></div>` : ""}
+    <div><h3>Escalations</h3>${flags ? `<ul class="flags">${flags}</ul>` : `<p class="empty">Nothing to escalate: the evidence settles every step.</p>`}</div>`;
+}
+
+tiles();
+document.getElementById("q").addEventListener("input", list);
+list();
+const start = /^#case_\d+$/.test(location.hash) ? location.hash.slice(1) : (cases.find(c => claimWrong(c) && needsReview(c)) || cases[0]).id;
+openCase(start);
+</script>

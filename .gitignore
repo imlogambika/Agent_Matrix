@@ -1,0 +1,25 @@
+# Evidence is fetched, never committed (scripts/fetch_dataset.sh)
+dataset
+dataset/
+
+# Local environments, model weights, secrets
+.venv/
+venv/
+*.gguf
+.env
+.env.*
+*.pem
+credentials*.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated per run (the cited final-run ledgers are kept explicitly below)
+code/evaluation/runs/usage_*.jsonl
+!code/evaluation/runs/usage_20261025T151638.jsonl
+!code/evaluation/runs/usage_20261025T151638_generating_calls.jsonl
+code/evaluation/subset_output.csv
+code/evaluation/subset_review_queue.csv
+*.blocked.csv
+explorer/

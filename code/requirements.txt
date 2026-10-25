@@ -1,0 +1,7 @@
+# Core pipeline: Python 3.11+ standard library (sqlite3 with JSON1, tomllib).
+numpy>=1.26          # screenshot cropping before vision extraction
+Pillow>=10.0         # screenshot cropping before vision extraction
+huggingface_hub>=0.23  # optional: also finds GGUF weights already in the Hugging Face cache
+# Model runtime (not a pip package): llama.cpp `llama-server`, see README.md.
+# System tool (not a pip package): poppler-utils (pdftotext) for PDF text.
+# Optional hosted backend only (--backend anthropic_api): anthropic>=0.40
