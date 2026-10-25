@@ -111,7 +111,7 @@ a specific way an agent could corrupt *this* system:
 Each policy was tested two ways:
 
 * `bash governance/test_policies.sh` runs every policy through Failproof's own hook runner in an isolated
-  sandbox: **54 / 54 cases pass**. These include must-allow look-alikes, so `cp output.csv /tmp/backup` and
+  sandbox: **67 / 67 cases pass**. These include must-allow look-alikes, so `cp output.csv /tmp/backup` and
   reading evidence stay allowed.
 * `fp policies test` independently checks each one: **6 / 6**.
 
@@ -139,7 +139,20 @@ then re-run it with `enforce`.
   bypasses the completion guard. Re-run python3 code/main.py instead."). `fp guardrails summary` records
   them as `blocked` by `cloud/agent-matrix-block-verdict-tampering@2` and
   `cloud/agent-matrix-block-private-data-commit@1` on 1 enforcing machine. The audit pipeline, the tests and
-  normal edits kept running unblocked. Roll back with `fp fleet rollback <machine> 2`.
+  normal edits kept running unblocked.
+* **False positives found by enforce mode:** two legitimate commands were blocked.
+  * The agent appended a log entry whose prose mentioned "git add of dataset/".
+  * A test-data script held an upload command inside a heredoc.
+
+  In both cases the rules had matched text inside a heredoc. Version 3 / 2 of the five deny policies judge
+  only the commands a shell line actually runs (heredoc bodies and quoted prose are data). Regression cases
+  cover both false positives, and the suite is now 67 / 67.
+* **Deploy 4: `enforce` with the fixed versions.** The same log entry went through, while
+  `cd . && git add --dry-run dataset/` was still blocked.
+
+Totals over these 24 hours: 6 policies, 14 published versions, 4 deployments, 467 tool calls evaluated and 5
+blocks by these cloud policies (3 intended, 2 the false positives that led to v3 / v2). Roll back with
+`fp fleet rollback <machine> <generation>`.
 
 The application also enforces its own safety controls (the guard, input validation, bounded model retries,
 identity-conflict handling). Those are Agent Matrix code, not Failproof features.

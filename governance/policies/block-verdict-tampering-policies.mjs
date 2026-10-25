@@ -3,15 +3,20 @@
 // edits output.csv or the review queue by hand bypasses that guard, so it is blocked.
 import { customPolicies, allow, deny } from "failproofai";
 
+// The commands a shell line actually runs: heredoc bodies are data, not commands.
+function commands(line) {
+  const code = line.replace(/<<-?\s*['"]?(\w+)['"]?([^\n]*)\n[\s\S]*?\n\s*\1\s*(?=\n|$)/g, "<<$1$2");
+  return code.split(/\n|;|&&|\|\||\|/).map((s) => s.trim().replace(/^((sudo|env)\s+|\w+=\S*\s+)*/, "")).filter(Boolean);
+}
+
 const VERDICTS = /(^|[\s"'=\/])(output(\.blocked)?\.csv|(sample_|subset_)?review_queue\.csv|escalation_report\.md)\b/;
-const TARGET = "(output(\\.blocked)?\\.csv|review_queue\\.csv|escalation_report\\.md)";
-const WRITES = [
-  new RegExp(`>>?\\s*\\S*${TARGET}`),                            // redirect onto a verdict file
-  new RegExp(`\\b(sed|perl)\\b[^|;&]*\\s-[a-z]*i[^|;&]*${TARGET}`),     // in-place edit
-  new RegExp(`\\btee\\b[^|;&]*${TARGET}`),
-  new RegExp(`\\b(cp|install)\\b[^|;&]*\\s\\S*${TARGET}\\s*($|[;&|)])`),  // copy over it (end of that command)
-  new RegExp(`\\b(mv|rm|truncate)\\b[^|;&]*${TARGET}`),             // replace or delete it
-];
+const T = "(output(\\.blocked)?\\.csv|review_queue\\.csv|escalation_report\\.md)";
+const writesVerdict = (cmd) =>
+  new RegExp(`>>?\\s*\\S*${T}`).test(cmd) ||                       // redirect onto a verdict file
+  new RegExp(`^(sed|perl)\\b.*\\s-[a-z]*i.*${T}`).test(cmd) ||       // in-place edit
+  new RegExp(`^tee\\b.*${T}`).test(cmd) ||
+  new RegExp(`^(cp|install)\\b.*\\s\\S*${T}\\s*$`).test(cmd) ||      // copy over it
+  new RegExp(`^(mv|rm|truncate)\\b.*${T}`).test(cmd);                 // replace or delete it
 
 customPolicies.add({
   name: "block-verdict-tampering",
@@ -28,8 +33,7 @@ customPolicies.add({
       return allow();
     }
     if (tool !== "Bash") return allow();
-    const command = String(ctx.toolInput?.command ?? "");
-    if (VERDICTS.test(command) && WRITES.some((re) => re.test(command))) {
+    if (commands(String(ctx.toolInput?.command ?? "")).some((c) => VERDICTS.test(c) && writesVerdict(c))) {
       return deny("Writing audit verdicts by hand bypasses the completion guard. Re-run python3 code/main.py instead.");
     }
     return allow();

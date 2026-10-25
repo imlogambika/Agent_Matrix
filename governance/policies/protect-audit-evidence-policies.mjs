@@ -1,15 +1,20 @@
 // The audit is only as good as its evidence: agents may read dataset/, never change it.
 import { customPolicies, allow, deny } from "failproofai";
 
+// The commands a shell line actually runs: heredoc bodies are data, not commands.
+function commands(line) {
+  const code = line.replace(/<<-?\s*['"]?(\w+)['"]?([^\n]*)\n[\s\S]*?\n\s*\1\s*(?=\n|$)/g, "<<$1$2");
+  return code.split(/\n|;|&&|\|\||\|/).map((s) => s.trim().replace(/^((sudo|env)\s+|\w+=\S*\s+)*/, "")).filter(Boolean);
+}
+
 const EVIDENCE = /(^|[\s"'=\/])dataset\//;
-const MUTATING = [
-  /\b(rm|rmdir|unlink|shred|truncate|mv|chmod|chown|touch)\b/,
-  /\bsed\b[^|;&]*\s-i/,
-  />>?\s*\S*dataset\//,
-  /\btee\b[^|;&]*dataset\//,
-  /\b(cp|install|rsync)\b[^|;&]*\sdataset\/\S*\s*($|[;&|)])/,   // copy over evidence (end of that command)
-  /\bgit\s+(checkout|restore|clean|rm|reset|mv)\b[^|;&]*dataset/,
-];
+const changesEvidence = (cmd) =>
+  /^(rm|rmdir|unlink|shred|truncate|mv|chmod|chown|touch)\b/.test(cmd) ||    // delete, move, alter, plant
+  /^(sed|perl)\b.*\s-[a-z]*i/.test(cmd) ||                                   // in-place edit
+  />>?\s*\S*dataset\//.test(cmd) ||                                          // redirect onto evidence
+  /^tee\b.*dataset\//.test(cmd) ||
+  /^(cp|install|rsync)\b.*\sdataset\/\S*\s*$/.test(cmd) ||                   // copy over evidence
+  /^git\s+(-C\s+\S+\s+)?(checkout|restore|clean|rm|reset|mv)\b.*dataset/.test(cmd);
 
 customPolicies.add({
   name: "protect-audit-evidence",
@@ -25,8 +30,7 @@ customPolicies.add({
       return allow();
     }
     if (tool !== "Bash") return allow();
-    const command = String(ctx.toolInput?.command ?? "");
-    if (EVIDENCE.test(command) && MUTATING.some((re) => re.test(command))) {
+    if (commands(String(ctx.toolInput?.command ?? "")).some((c) => EVIDENCE.test(c) && changesEvidence(c))) {
       return deny("This command would change audit evidence under dataset/, which is read-only. Copy the file " +
                   "to a scratch directory if a test needs a modified version.");
     }

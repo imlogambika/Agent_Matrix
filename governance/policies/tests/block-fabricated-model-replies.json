@@ -1,85 +1,12 @@
 [
- {
-  "name": "deny: Edit a cached model answer",
-  "event": "PreToolUse",
-  "tool": "Edit",
-  "input": {
-   "file_path": "/repo/code/cache/llm_cache.json",
-   "old_string": "false",
-   "new_string": "true"
-  },
-  "expect": "deny"
- },
- {
-  "name": "deny: rewrite answers with sed",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "sed -i 's/\"about_deletion\": false/\"about_deletion\": true/' code/cache/llm_cache.json"
-  },
-  "expect": "deny"
- },
- {
-  "name": "deny: replace the cache via jq redirect",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "jq '.' /tmp/fake.json > code/cache/llm_cache.json"
-  },
-  "expect": "deny"
- },
- {
-  "name": "deny: swap in another cache file",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "cp /tmp/fake_cache.json code/cache/llm_cache.json"
-  },
-  "expect": "deny"
- },
- {
-  "name": "allow: read the cache",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "python3 -c \"import json; print(len(json.load(open('code/cache/llm_cache.json'))))\""
-  },
-  "expect": "allow"
- },
- {
-  "name": "allow: back up the cache",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "cp code/cache/llm_cache.json /tmp/cache_backup.json"
-  },
-  "expect": "allow"
- },
- {
-  "name": "allow: regenerate replies with live models",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "python3 code/main.py --no-cache"
-  },
-  "expect": "allow"
- },
- {
-  "name": "deny: swap the cache, then run",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "cp /tmp/fake.json code/cache/llm_cache.json && python3 code/main.py --offline"
-  },
-  "expect": "deny"
- },
- {
-  "name": "allow: back up the cache, then run",
-  "event": "PreToolUse",
-  "tool": "Bash",
-  "input": {
-   "command": "cp code/cache/llm_cache.json /tmp/c.json; python3 code/main.py --offline"
-  },
-  "expect": "allow"
- }
+ {"name": "deny: Edit a cached model answer", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/code/cache/llm_cache.json", "old_string": "false", "new_string": "true"}, "expect": "deny"},
+ {"name": "deny: rewrite answers with sed", "event": "PreToolUse", "tool": "Bash", "input": {"command": "sed -i 's/\"about_deletion\": false/\"about_deletion\": true/' code/cache/llm_cache.json"}, "expect": "deny"},
+ {"name": "deny: replace the cache via jq redirect", "event": "PreToolUse", "tool": "Bash", "input": {"command": "jq '.' /tmp/fake.json > code/cache/llm_cache.json"}, "expect": "deny"},
+ {"name": "deny: swap in another cache file", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp /tmp/fake_cache.json code/cache/llm_cache.json"}, "expect": "deny"},
+ {"name": "deny: swap the cache, then run", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp /tmp/fake.json code/cache/llm_cache.json && python3 code/main.py --offline"}, "expect": "deny"},
+ {"name": "allow: read the cache", "event": "PreToolUse", "tool": "Bash", "input": {"command": "python3 -c \"import json; print(len(json.load(open('code/cache/llm_cache.json'))))\""}, "expect": "allow"},
+ {"name": "allow: back up the cache", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp code/cache/llm_cache.json /tmp/cache_backup.json"}, "expect": "allow"},
+ {"name": "allow: back up the cache, then run", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp code/cache/llm_cache.json /tmp/c.json; python3 code/main.py --offline"}, "expect": "allow"},
+ {"name": "allow: regenerate replies with live models", "event": "PreToolUse", "tool": "Bash", "input": {"command": "python3 code/main.py --no-cache"}, "expect": "allow"},
+ {"name": "allow: heredoc notes that mention the cache", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cat > notes.md <<'EOF'\ncp fake.json code/cache/llm_cache.json is blocked\nEOF"}, "expect": "allow"}
 ]

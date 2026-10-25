@@ -3,7 +3,19 @@
 // deletion). Only the model client may write it.
 import { customPolicies, allow, deny } from "failproofai";
 
+// The commands a shell line actually runs: heredoc bodies are data, not commands.
+function commands(line) {
+  const code = line.replace(/<<-?\s*['"]?(\w+)['"]?([^\n]*)\n[\s\S]*?\n\s*\1\s*(?=\n|$)/g, "<<$1$2");
+  return code.split(/\n|;|&&|\|\||\|/).map((s) => s.trim().replace(/^((sudo|env)\s+|\w+=\S*\s+)*/, "")).filter(Boolean);
+}
+
 const CACHE = /llm_cache\.json/;
+const writesCache = (cmd) =>
+  />>?\s*\S*llm_cache\.json/.test(cmd) ||
+  /^(sed|perl)\b.*\s-[a-z]*i.*llm_cache/.test(cmd) ||
+  /^tee\b.*llm_cache/.test(cmd) ||
+  /^(cp|install)\b.*\s\S*llm_cache\.json\s*$/.test(cmd) ||
+  /^(mv|rm|truncate)\b.*llm_cache/.test(cmd);
 
 customPolicies.add({
   name: "block-fabricated-model-replies",
@@ -18,11 +30,7 @@ customPolicies.add({
         : allow();
     }
     if (tool !== "Bash") return allow();
-    const command = String(ctx.toolInput?.command ?? "");
-    const writes = [/>>?\s*\S*llm_cache\.json/, /\b(sed|perl)\b[^|;&]*\s-[a-z]*i[^|;&]*llm_cache/,
-                    /\btee\b[^|;&]*llm_cache/, /\b(cp|install)\b[^|;&]*\s\S*llm_cache\.json\s*($|[;&|)])/,
-                    /\b(mv|rm|truncate)\b[^|;&]*llm_cache/];
-    if (CACHE.test(command) && writes.some((re) => re.test(command))) {
+    if (commands(String(ctx.toolInput?.command ?? "")).some((c) => CACHE.test(c) && writesCache(c))) {
       return deny("llm_cache.json records real model answers and is written only by the model client. " +
                   "Use python3 code/main.py --no-cache to regenerate replies.");
     }

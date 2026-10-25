@@ -1,8 +1,12 @@
 [
-  {"name": "deny: stage the dataset", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add dataset/"}, "expect": "deny"},
-  {"name": "deny: force-add ignored files", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add -f code/evaluation/runs/usage_new.jsonl"}, "expect": "deny"},
-  {"name": "deny: stage model weights", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add models/qwen.gguf"}, "expect": "deny"},
-  {"name": "deny: stage an env file", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add .env"}, "expect": "deny"},
-  {"name": "allow: stage source and docs", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add code/ghost_audit/guard.py README.md"}, "expect": "allow"},
-  {"name": "allow: commit", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git commit -m 'guard: reject late evidence'"}, "expect": "allow"}
+ {"name": "deny: stage the dataset", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add dataset/"}, "expect": "deny"},
+ {"name": "deny: force-add ignored files", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add -f code/evaluation/runs/usage_new.jsonl"}, "expect": "deny"},
+ {"name": "deny: stage model weights", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add models/qwen.gguf"}, "expect": "deny"},
+ {"name": "deny: stage an env file", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add .env"}, "expect": "deny"},
+ {"name": "deny: stage the dataset after cd", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cd /repo && git add dataset/"}, "expect": "deny"},
+ {"name": "deny: stage the dataset with -C", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git -C /repo add dataset/evidence"}, "expect": "deny"},
+ {"name": "allow: stage source and docs", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add code/ghost_audit/guard.py README.md"}, "expect": "allow"},
+ {"name": "allow: commit", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git commit -m 'guard: reject late evidence'"}, "expect": "allow"},
+ {"name": "allow: heredoc log entry that mentions git add of dataset/ (the enforce-mode false positive)", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cat >> log.txt <<'EOF'\n* Two probes (a dry-run git add of dataset/, a copy onto output.csv) were blocked\nEOF\ngrep -c tool= log.txt"}, "expect": "allow"},
+ {"name": "allow: commit message that mentions the rule", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git commit -m 'policy: never git add dataset/'"}, "expect": "allow"}
 ]
