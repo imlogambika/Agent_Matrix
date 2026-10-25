@@ -129,8 +129,8 @@ def main(argv=None) -> int:
     if llm.failures:
         print(f"[llm] {len(llm.failures)} model calls failed and fell back to rules (flagged for review)")
     if tel.active:
-        print(f"[failproof] {tel.counts['sessions']} sessions, {tel.counts['events']} events written to the "
-              f"failproofai-sdk spool (shipped by the Failproof daemon)")
+        print(f"[failproof] {tel.counts['sessions']} sessions, {tel.counts['events']} events emitted, "
+              f"{tel.counts['dropped']} dropped; the Failproof daemon ships the spool to the org")
     live = {c.call_id for c in llm.calls if not c.cached}
     print(f"[llm] model calls={len(live)} cached replies={sum(c.cached for c in llm.calls)} "
           f"ledger={llm.ledger_path}")

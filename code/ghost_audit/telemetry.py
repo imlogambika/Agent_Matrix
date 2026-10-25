@@ -24,6 +24,9 @@ import uuid
 from contextlib import contextmanager
 
 
+FLUSH_EVERY = 2000   # events; far below the SDK's 10,000-event in-memory queue cap
+
+
 class _Agent:
     """Mutable end-of-run fields for one agent span."""
 
@@ -39,7 +42,8 @@ class Telemetry:
         self.run_id = run_id or uuid.uuid4().hex[:8]
         self.log = log
         self._stack: list[tuple[str, str]] = []   # (session_id, agent_id), innermost last
-        self.counts = {"sessions": 0, "events": 0}
+        self.counts = {"sessions": 0, "events": 0, "dropped": 0}
+        self._since_flush = 0
         if enabled:
             try:
                 import failproofai_sdk
@@ -60,6 +64,7 @@ class Telemetry:
         fields.setdefault("agent_id", aid)
         getattr(self.sdk.event, kind)(**fields)
         self.counts["events"] += 1
+        self._since_flush += 1
 
     # ------------------------------------------------------------------ spans
     @contextmanager
@@ -92,6 +97,11 @@ class Telemetry:
             raise
         self._emit("agent_end", outcome=a.outcome, summary=a.summary[:500])
         self._stack.pop()
+        if not self._stack and self._since_flush >= FLUSH_EVERY:
+            # The audit loop keeps the main thread busy, so the SDK's background flush thread can fall
+            # behind; its queue is capped at 10,000 events and drops the oldest. Flush between sessions.
+            self.sdk._writer.flush_now()
+            self._since_flush = 0
 
     # ------------------------------------------------------------------ events
     def tool(self, name: str, input: dict, output=None, error: str | None = None) -> None:
@@ -124,6 +134,7 @@ class Telemetry:
     def close(self) -> None:
         if self.sdk:
             self.sdk._writer.flush_now()   # documented flush (SDK §3); the run is about to exit
+            self.counts["dropped"] = getattr(self.sdk._writer, "_dropped", 0)
 
 
 def text_ref(text: str) -> str:
