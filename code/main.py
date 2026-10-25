@@ -73,7 +73,7 @@ def main(argv=None) -> int:
     ap.add_argument("--trace", default=None, help="write per-case reasoning trace (JSON)")
     ap.add_argument("--failproof", action="store_true",
                     help="record each case as a Failproof AI session (needs failproofai-sdk; no personal data is sent)")
-    ap.add_argument("--environment", default="dev", help="Failproof environment label (default: dev)")
+    ap.add_argument("--environment", default="production", help="Failproof environment label (default: production)")
     ap.add_argument("--cases", default="", help="comma-separated case ids to audit (writes a partial output)")
     args = ap.parse_args(argv)
 

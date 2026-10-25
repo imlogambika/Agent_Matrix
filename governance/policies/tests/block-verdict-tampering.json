@@ -1,0 +1,12 @@
+[
+  {"name": "deny: hand-edit output.csv", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/output.csv", "old_string": "case_33,INCOMPLETE", "new_string": "case_33,COMPLETE"}, "expect": "deny"},
+  {"name": "deny: rewrite output.csv with the Write tool", "event": "PreToolUse", "tool": "Write", "input": {"file_path": "/repo/output.csv", "content": "case_id,deletion_status,steps_json\n"}, "expect": "deny"},
+  {"name": "deny: flip verdicts with sed", "event": "PreToolUse", "tool": "Bash", "input": {"command": "sed -i 's/,INCOMPLETE,/,COMPLETE,/' output.csv"}, "expect": "deny"},
+  {"name": "deny: overwrite output.csv by redirect", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cat old_output.csv > output.csv"}, "expect": "deny"},
+  {"name": "deny: copy a blocked output over the real one", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp output.blocked.csv output.csv"}, "expect": "deny"},
+  {"name": "deny: empty the review queue", "event": "PreToolUse", "tool": "Bash", "input": {"command": "truncate -s 0 code/evaluation/review_queue.csv"}, "expect": "deny"},
+  {"name": "allow: regenerate through the pipeline", "event": "PreToolUse", "tool": "Bash", "input": {"command": "python3 code/main.py --offline"}, "expect": "allow"},
+  {"name": "allow: read the verdicts", "event": "PreToolUse", "tool": "Bash", "input": {"command": "head -5 output.csv"}, "expect": "allow"},
+  {"name": "allow: back up the output", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp output.csv /tmp/output_backup.csv"}, "expect": "allow"},
+  {"name": "allow: validate the output", "event": "PreToolUse", "tool": "Bash", "input": {"command": "python3 code/evaluation/validate_output.py output.csv"}, "expect": "allow"}
+]

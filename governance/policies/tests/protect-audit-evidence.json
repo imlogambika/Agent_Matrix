@@ -1,0 +1,13 @@
+[
+  {"name": "deny: delete evidence", "event": "PreToolUse", "tool": "Bash", "input": {"command": "rm -rf dataset/evidence/logs"}, "expect": "deny"},
+  {"name": "deny: rewrite a claimed status in place", "event": "PreToolUse", "tool": "Bash", "input": {"command": "sed -i 's/NOT_STARTED/COMPLETE/' dataset/deletion_requests.csv"}, "expect": "deny"},
+  {"name": "deny: blank a log by redirect", "event": "PreToolUse", "tool": "Bash", "input": {"command": "echo '' > dataset/evidence/logs/app.log"}, "expect": "deny"},
+  {"name": "deny: move screenshots away", "event": "PreToolUse", "tool": "Bash", "input": {"command": "mv dataset/evidence/images /tmp/"}, "expect": "deny"},
+  {"name": "deny: plant a fake evidence file", "event": "PreToolUse", "tool": "Bash", "input": {"command": "touch dataset/evidence/records/proof_of_deletion.json"}, "expect": "deny"},
+  {"name": "deny: Write tool into evidence", "event": "PreToolUse", "tool": "Write", "input": {"file_path": "/repo/dataset/evidence/records/x.json", "content": "{}"}, "expect": "deny"},
+  {"name": "deny: Edit an identity record", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/dataset/user_identities.csv", "old_string": "a", "new_string": "b"}, "expect": "deny"},
+  {"name": "allow: read evidence", "event": "PreToolUse", "tool": "Bash", "input": {"command": "grep -r user_17 dataset/evidence/logs"}, "expect": "allow"},
+  {"name": "allow: copy evidence out to scratch", "event": "PreToolUse", "tool": "Bash", "input": {"command": "cp dataset/evidence/logs/app.log /tmp/scratch/app.log"}, "expect": "allow"},
+  {"name": "allow: run the audit", "event": "PreToolUse", "tool": "Bash", "input": {"command": "python3 code/main.py --offline"}, "expect": "allow"},
+  {"name": "allow: edit source code", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/code/main.py", "old_string": "a", "new_string": "b"}, "expect": "allow"}
+]

@@ -1,0 +1,8 @@
+[
+  {"name": "deny: stage the dataset", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add dataset/"}, "expect": "deny"},
+  {"name": "deny: force-add ignored files", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add -f code/evaluation/runs/usage_new.jsonl"}, "expect": "deny"},
+  {"name": "deny: stage model weights", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add models/qwen.gguf"}, "expect": "deny"},
+  {"name": "deny: stage an env file", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add .env"}, "expect": "deny"},
+  {"name": "allow: stage source and docs", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git add code/ghost_audit/guard.py README.md"}, "expect": "allow"},
+  {"name": "allow: commit", "event": "PreToolUse", "tool": "Bash", "input": {"command": "git commit -m 'guard: reject late evidence'"}, "expect": "allow"}
+]

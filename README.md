@@ -89,19 +89,34 @@ These denials are real ones from this build session:
 * model calls as `model_request` / `model_response` with token counts and duration.
 
 Events contain ids, counts and decisions only. A scan of a full 518-case run (16,061 events) found 0 email
-addresses, names, phone numbers or request texts. The full run wrote **520 sessions / 16,061 events** to the SDK spool. Shipping them to the organisation
-is the Failproof daemon's job, so verify with `failproofai config --status` and the dashboard (see
-*Remaining operator steps*).
+addresses, names, phone numbers or request texts. A full run writes **520 sessions / 16,061 events** to the SDK
+spool. The Failproof daemon ships them to the organisation once the machine is connected (see *Connecting your
+Failproof organisation*). Until then they wait in the spool, so a dashboard showing "waiting for your first
+session" means the machine is not connected yet.
 
-**3. Protecting the evidence from the agents that work on this repo (`policy-drafts/agent-matrix-policies.mjs`).**
-No builtin protects a data directory, so two custom `PreToolUse` policies were written:
+**3. Policies that protect the audit from the agents that work on it (`governance/policies/`).**
+An auditor is only trustworthy if nobody can quietly change its evidence, its verdicts or what its models said.
+No builtin protects a data directory or a verdict file, so six `PreToolUse` policies were written. Each one closes
+a specific way an agent could corrupt *this* system:
 
-* `protect-audit-evidence` denies deleting, moving, overwriting or in-place editing anything under `dataset/`.
-  This covers the shell as well as the Write and Edit tools.
-* `block-private-data-commit` denies `git add` of the dataset, model weights or credentials, and `git add --force`.
+| Policy | Mode | Closes |
+| --- | --- | --- |
+| `protect-audit-evidence` | deny | Deleting, moving, editing or planting files under `dataset/` (shell, Write and Edit) |
+| `block-verdict-tampering` | deny | Hand-writing `output.csv` or the review queue, which would bypass the completion guard; verdicts come only from `python3 code/main.py` |
+| `block-fabricated-model-replies` | deny | Editing `llm_cache.json`, which would fake what the models answered (e.g. turning a request into a deletion) |
+| `block-evidence-exfiltration` | deny | Uploading identities or evidence (curl POST, scp, rsync to a host, netcat, gist, cloud copy) |
+| `block-private-data-commit` | deny | Staging the dataset, weights, `.env` or credentials, or `git add --force` |
+| `warn-decision-logic-change` | instruct | Editing the guard, policy, state or review logic without telling the user and running the safety tests |
 
-Both were tested through Failproof's own hook runner in an isolated sandbox: **12 / 12 cases pass** (7
-must-deny, 5 must-allow; `policy-drafts/cases.json`).
+Each policy was tested two ways:
+
+* `bash governance/test_policies.sh` runs every policy through Failproof's own hook runner in an isolated
+  sandbox: **47 / 47 cases pass**. These include must-allow look-alikes, so `cp output.csv /tmp/backup` and
+  reading evidence stay allowed.
+* `fp policies test` independently checks each one: **6 / 6**.
+
+`bash governance/publish_and_deploy.sh <machine-id>` publishes them to the org and deploys them in `observe`,
+then re-run it with `enforce`.
 
 The application also enforces its own safety controls (the guard, input validation, bounded model retries,
 identity-conflict handling). Those are Agent Matrix code, not Failproof features.
@@ -121,7 +136,7 @@ python3 code/demo.py safety                   # 9 unsafe situations and what the
 
 # with live open-weight models and Failproof runtime telemetry
 python3 -m venv --system-site-packages .venv && .venv/bin/pip install --pre failproofai-sdk==0.0.1b6
-.venv/bin/python code/main.py --failproof --environment demo
+.venv/bin/python code/main.py --failproof              # Failproof environment "production" by default
 ```
 
 Live models: llama.cpp `llama-server` plus GGUF weights (CPU only, no API key), configured in
@@ -172,17 +187,24 @@ code/ghost_audit/               the agents: intent, data (identity), evidence/, 
 code/evaluation/                evaluate, custom cases, safety scenarios, validator, model benchmark,
                                 reports, review_queue.csv
 code/tests/                     unit tests + safety regression tests
-policy-drafts/                  Failproof project policies + their test cases
+governance/policies/            6 Failproof policies + their test cases (governance/test_policies.sh)
+governance/publish_and_deploy.sh  publish to the Failproof org and deploy to a machine
 scripts/fetch_dataset.sh        fetch the public dataset
 output.csv                      the 518-row result
 ```
 
-## Remaining operator steps
+## Connecting your Failproof organisation
 
-These steps need a person, because Failproof's guard rightly stops the agent doing them:
+These steps need a person, because they enrol the machine, need sudo or an emailed code, or change
+enforcement:
 
 ```bash
-failproofai config --status        # is the daemon running and connected? (shipping the 16,061 events)
-failproofai policies               # which builtins are enabled on this machine
-mkdir -p .failproofai/policies && cp policy-drafts/agent-matrix-policies.mjs .failproofai/policies/
+npm install -g failproofai && failproofai config     # connect this machine (installs the daemon)
+failproofai config --status                          # daemon running, ingest accepted
+uv tool install fp-cloud-cli && fp login              # sign in to the org (emailed code)
+fp --json fleet list                                  # this machine's id
+bash governance/publish_and_deploy.sh <machine-id> observe   # 6 policies -> org, deployed in observe
+.venv/bin/python code/main.py --failproof             # 520 audit sessions -> org
+fp guardrails summary --since 24h                     # what the policies decided
+bash governance/publish_and_deploy.sh <machine-id> enforce   # then enforce
 ```

@@ -1,0 +1,7 @@
+[
+  {"name": "instruct: edit the completion guard", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/code/ghost_audit/guard.py", "old_string": "a", "new_string": "b"}, "expect": "instruct"},
+  {"name": "instruct: rewrite the deletion policy", "event": "PreToolUse", "tool": "Write", "input": {"file_path": "/repo/code/ghost_audit/policy.py", "content": "x"}, "expect": "instruct"},
+  {"name": "instruct: change state reconstruction", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/code/ghost_audit/state.py", "old_string": "a", "new_string": "b"}, "expect": "instruct"},
+  {"name": "allow: edit the demo", "event": "PreToolUse", "tool": "Edit", "input": {"file_path": "/repo/code/demo.py", "old_string": "a", "new_string": "b"}, "expect": "allow"},
+  {"name": "allow: read the guard", "event": "PreToolUse", "tool": "Read", "input": {"file_path": "/repo/code/ghost_audit/guard.py"}, "expect": "allow"}
+]
